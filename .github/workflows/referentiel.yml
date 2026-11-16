@@ -1,0 +1,23 @@
+name: Référentiel ATT&CK Radar
+on:
+  schedule:
+    - cron: '17 2 * * 1'   # chaque lundi
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r pipeline/requirements.txt
+      - run: pipeline/build.sh
+      - name: Publier le paquet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view referentiel >/dev/null 2>&1 || gh release create referentiel --title "Référentiel" --notes "Paquet de référentiel mis à jour automatiquement."
+          gh release upload referentiel pipeline/dist/catalog.json pipeline/dist/rules.ndjson.gz pipeline/dist/manifest.json --clobber

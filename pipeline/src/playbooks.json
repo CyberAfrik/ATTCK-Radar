@@ -1,0 +1,152 @@
+[
+ {
+  "id": "ransomware",
+  "label": "Rançongiciel",
+  "description": "Chiffrement de masse après intrusion et mouvement latéral",
+  "techniques": [
+   "T1566",
+   "T1190",
+   "T1078",
+   "T1110",
+   "T1003",
+   "T1558",
+   "T1550",
+   "T1562",
+   "T1070",
+   "T1021",
+   "T1105",
+   "T1071",
+   "T1486",
+   "T1490",
+   "T1489",
+   "T1485",
+   "T1531"
+  ]
+ },
+ {
+  "id": "ad_compromise",
+  "label": "Compromission Active Directory",
+  "description": "Escalade jusqu'aux privilèges d'administrateur du domaine",
+  "techniques": [
+   "T1110",
+   "T1003",
+   "T1558",
+   "T1552",
+   "T1098",
+   "T1484",
+   "T1550",
+   "T1207",
+   "T1070",
+   "T1078.003"
+  ]
+ },
+ {
+  "id": "adcs_abuse",
+  "label": "Abus PKI / ADCS",
+  "description": "Détournement des modèles de certificats (ESC1 à ESC8)",
+  "techniques": [
+   "T1649",
+   "T1550",
+   "T1556",
+   "T1078"
+  ]
+ },
+ {
+  "id": "bec_phishing",
+  "label": "Phishing et fraude par messagerie",
+  "description": "Compromission de boîte mail et fraude au virement",
+  "techniques": [
+   "T1566",
+   "T1078",
+   "T1110",
+   "T1621",
+   "T1114",
+   "T1534",
+   "T1567"
+  ]
+ },
+ {
+  "id": "supply_chain",
+  "label": "Chaîne logicielle (CI/CD)",
+  "description": "Compromission de l'usine logicielle et des secrets",
+  "techniques": [
+   "T1195",
+   "T1552",
+   "T1078",
+   "T1072",
+   "T1105"
+  ]
+ },
+ {
+  "id": "data_exfil",
+  "label": "Exfiltration de données",
+  "description": "Collecte, préparation et sortie des données",
+  "techniques": [
+   "T1087",
+   "T1213",
+   "T1560",
+   "T1074",
+   "T1071",
+   "T1568",
+   "T1041",
+   "T1048",
+   "T1567",
+   "T1029",
+   "T1020"
+  ]
+ },
+ {
+  "id": "remote_access_abuse",
+  "label": "Abus d'accès distant",
+  "description": "VPN, RDP, VDI et outils de prise en main",
+  "techniques": [
+   "T1133",
+   "T1110",
+   "T1078",
+   "T1021",
+   "T1550",
+   "T1219"
+  ]
+ },
+ {
+  "id": "lateral_recon",
+  "label": "Reconnaissance et mouvement latéral",
+  "description": "Découverte interne après l'intrusion",
+  "techniques": [
+   "T1087",
+   "T1018",
+   "T1069",
+   "T1046",
+   "T1615",
+   "T1021",
+   "T1210",
+   "T1550"
+  ]
+ },
+ {
+  "id": "c2_covert",
+  "label": "Commande et contrôle discret",
+  "description": "Canaux C2 dissimulés dans le trafic légitime",
+  "techniques": [
+   "T1071",
+   "T1568",
+   "T1090",
+   "T1105",
+   "T1219",
+   "T1102",
+   "T1572"
+  ]
+ },
+ {
+  "id": "esxi_ransomware",
+  "label": "Rançongiciel sur hyperviseur",
+  "description": "Chiffrement des machines virtuelles ESXi",
+  "techniques": [
+   "T1078",
+   "T1021",
+   "T1490",
+   "T1486",
+   "T1489"
+  ]
+ }
+]
