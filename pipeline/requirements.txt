@@ -1,0 +1,9 @@
+pysigma
+pysigma-backend-splunk
+pysigma-backend-elasticsearch
+pysigma-backend-kusto
+pysigma-backend-crowdstrike
+pysigma-backend-cortexxdr
+pysigma-pipeline-sysmon
+pysigma-pipeline-windows
+pyyaml
