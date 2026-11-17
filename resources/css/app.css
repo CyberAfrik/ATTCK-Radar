@@ -217,6 +217,7 @@ select.input { background: var(--bg); }
 .tab.missing { color: #6F7F9A; text-decoration: line-through; }
 .tabs .copy { margin-left: auto; }
 .code { margin: 0; padding: 20px 26px; background: var(--code); font-family: var(--mono); font-size: 13px; line-height: 1.7; color: #C9D7EA; white-space: pre-wrap; word-break: break-word; max-height: 460px; overflow: auto; }
+.fallback { margin: 0; padding: 10px 26px; background: var(--plan-bg); color: var(--amber); font-size: 13px; border-bottom: 1px solid var(--border); }
 .code.empty { color: var(--muted); font-family: var(--font); }
 .rule-foot { gap: 6px; border-top: 1px solid var(--border); }
 .only-mobile { display: none; }

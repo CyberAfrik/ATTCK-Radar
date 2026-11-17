@@ -25,7 +25,7 @@ Une technique est détectable si au moins une règle applicable la vise.
 
 ## Référentiel
 
-`pipeline/build.sh` télécharge MITRE ATT&CK (STIX) et SigmaHQ, convertit les règles avec pySigma
+`pipeline/build.sh` télécharge MITRE ATT&CK (STIX), SigmaHQ, Splunk Security Content et Microsoft Sentinel, convertit les règles avec pySigma
 (Splunk, Elastic, Sentinel, Falcon LogScale, Cortex XQL) et produit `manifest.json`, `catalog.json`
 et `rules.ndjson.gz`. Le workflow GitHub Actions le publie chaque semaine.
 
@@ -48,5 +48,7 @@ devient une source automatique, à reclasser.
 
 ## Licences
 
-Code : MIT. Règles : SigmaHQ, Detection Rule License 1.1 (auteur et origine affichés sur chaque règle).
+Code : MIT. Règles : SigmaHQ (Detection Rule License 1.1), Splunk Security Content (Apache 2.0),
+Microsoft Sentinel (MIT). L'origine, la licence et le lien vers le fichier d'origine sont affichés sur chaque règle.
+Les règles Splunk et Sentinel sont natives : elles ne sont pas converties vers les autres langages.
 Taxonomie : MITRE ATT&CK®.

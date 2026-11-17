@@ -234,7 +234,7 @@ class AdminController extends Controller
     public function sources(Request $request)
     {
         $overridden = DB::table('source_overrides')->pluck('source_id')->flip();
-        $rows = DB::table('sources')->orderByDesc('auto')->orderBy('family_id')->orderByDesc('rules_count')->get()
+        $rows = DB::table('sources')->orderByDesc('auto')->orderBy('minor')->orderBy('family_id')->orderByDesc('rules_count')->get()
             ->map(function ($s) use ($overridden) {
                 $s->overridden = isset($overridden[$s->id]);
 
@@ -255,10 +255,11 @@ class AdminController extends Controller
             'label' => ['required', 'string', 'max:150'],
             'family_id' => ['required', Rule::in(DB::table('source_families')->pluck('id')->all())],
             'description' => ['nullable', 'string', 'max:390'],
+            'minor' => ['nullable', 'boolean'],
         ]);
         DB::table('source_overrides')->updateOrInsert(['source_id' => $id], [
             'label' => $data['label'], 'family_id' => $data['family_id'], 'description' => $data['description'] ?? '',
-            'updated_at' => now(), 'created_at' => now(),
+            'minor' => (bool) ($data['minor'] ?? false), 'updated_at' => now(), 'created_at' => now(),
         ]);
         $overlays->apply();
 
@@ -271,7 +272,7 @@ class AdminController extends Controller
         if ($d = $overlays->packDefault('sources', $id)) {
             DB::table('sources')->where('id', $id)->update([
                 'label' => Str::limit($d['label'], 150, ''), 'family_id' => $d['family'],
-                'description' => Str::limit($d['description'] ?? '', 390, ''), 'auto' => (bool) $d['auto'],
+                'description' => Str::limit($d['description'] ?? '', 390, ''), 'auto' => (bool) $d['auto'], 'minor' => (bool) ($d['minor'] ?? $d['auto']),
             ]);
         }
         $overlays->apply();

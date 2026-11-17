@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch, onMounted, nextTick } from 'vue';
-import { store, coverage, onIds, plannedIds, api, LEVEL_FR } from '../store';
+import { store, coverage, onIds, plannedIds, api, LEVEL_FR, ORIGIN_FR } from '../store';
 import RadarChart from '../components/RadarChart.vue';
 import RulePanel from '../components/RulePanel.vue';
 import ExportForm from '../components/ExportForm.vue';
@@ -14,6 +14,8 @@ const scope = ref('on');
 const q = ref('');
 const level = ref('');
 const technique = ref('');
+const origin = ref('');
+const onlyMyLang = ref(true);
 const items = ref([]);
 const meta = ref({ total: 0, page: 1, pages: 1, levels: {} });
 const busy = ref(false);
@@ -28,7 +30,8 @@ async function fetchRules(page = 1) {
     busy.value = true; failed.value = '';
     try {
         const data = await api('/rules/search', {
-            sources: scopeIds.value, q: q.value || null, level: level.value || null, technique: technique.value || null, page,
+            sources: scopeIds.value, q: q.value || null, level: level.value || null, technique: technique.value || null, origin: origin.value || null,
+            lang: onlyMyLang.value ? store.language : null, page,
         });
         if (mine !== seq) return;
         items.value = page === 1 ? data.items : items.value.concat(data.items);
@@ -43,10 +46,11 @@ async function fetchRules(page = 1) {
     }
 }
 function refresh() { clearTimeout(timer); timer = setTimeout(() => fetchRules(1), 250); }
-watch([scopeIds, q, level, technique], refresh, { deep: true });
+watch([scopeIds, q, level, technique, origin, onlyMyLang, () => store.language], refresh, { deep: true });
 onMounted(() => { if (!empty.value) fetchRules(1); });
 
 const levelChips = computed(() => ['critical', 'high', 'medium', 'low'].filter((l) => meta.value.levels[l]).map((l) => ({ id: l, label: LEVEL_FR[l], n: meta.value.levels[l] })));
+const originChips = computed(() => Object.entries(meta.value.origins || {}).map(([id, n]) => ({ id, n, label: ORIGIN_FR[id] || id })).sort((a, b) => b.n - a.n));
 const allCount = computed(() => Object.values(meta.value.levels || {}).reduce((a, b) => a + b, 0));
 
 async function pickTechnique(cell) {
@@ -85,7 +89,7 @@ const topGaps = computed(() => coverage.value.gaps.slice(0, 6));
             <div class="kpi-row">
                 <div class="card kpi-card"><b class="display accent">{{ coverage.pctOn }}%</b><span>des techniques détectables aujourd'hui ({{ coverage.nOn }} sur {{ coverage.total }})</span></div>
                 <div class="card kpi-card"><b class="display amber">{{ coverage.pctPlan }}%</b><span>avec les sources prévues</span></div>
-                <div class="card kpi-card"><b class="display">{{ coverage.rulesOn }}</b><span>règles applicables à vos sources</span></div>
+                <div class="card kpi-card"><b class="display">{{ coverage.rulesOn }}</b><span>règles applicables à vos sources, tous langages confondus</span></div>
                 <div class="card kpi-card"><b class="display">{{ coverage.realGaps }}</b><span>{{ coverage.hasPriorities ? 'angles morts sur vos scénarios' : 'techniques sans source adaptée' }}</span></div>
             </div>
 
@@ -170,6 +174,13 @@ const topGaps = computed(() => coverage.value.gaps.slice(0, 6));
                         <button v-if="technique" type="button" class="chip chip-btn active" @click="technique = ''">{{ technique }} {{ techName }} ✕</button>
                     </div>
                 </div>
+                <div class="toolbar">
+                    <label class="check"><input v-model="onlyMyLang" type="checkbox"><span>Uniquement les règles disponibles en {{ langLabel }}</span></label>
+                    <div v-if="originChips.length > 1" class="chips" role="group" aria-label="Origine des règles">
+                        <button type="button" class="chip chip-btn" :class="{ active: !origin }" @click="origin = ''">Toutes origines</button>
+                        <button v-for="o in originChips" :key="o.id" type="button" class="chip chip-btn" :class="{ active: origin === o.id }" @click="origin = origin === o.id ? '' : o.id">{{ o.label }} · {{ o.n }}</button>
+                    </div>
+                </div>
                 <p v-if="failed" class="alert" role="alert">{{ failed }}</p>
 
                 <div class="rules-layout">
@@ -177,7 +188,7 @@ const topGaps = computed(() => coverage.value.gaps.slice(0, 6));
                         <p v-if="!busy && !items.length" class="muted">Aucune règle ne correspond à ces critères.</p>
                         <button v-for="r in items" :key="r.id" type="button" class="rule-item" :class="{ active: r.id === selected }" @click="selected = r.id">
                             <span class="between top"><b>{{ r.title }}</b><span class="level" :class="'lv-' + r.level">{{ LEVEL_FR[r.level] }}</span></span>
-                            <span class="mono small muted">{{ r.techniques.slice(0, 3).join(' · ') || 'Sans technique' }} · {{ sourceLabels(r.sources) }}</span>
+                            <span class="mono small muted">{{ r.techniques.slice(0, 3).join(' · ') || 'Sans technique' }} · {{ sourceLabels(r.sources) }}<template v-if="r.origin !== 'sigmahq'"> · {{ ORIGIN_FR[r.origin] || r.origin }}</template></span>
                         </button>
                         <button v-if="meta.page < meta.pages" type="button" class="btn btn-ghost btn-block" :disabled="busy" @click="fetchRules(meta.page + 1)">
                             {{ busy ? 'Chargement…' : 'Afficher plus de règles (' + (meta.total - items.length) + ' restantes)' }}
