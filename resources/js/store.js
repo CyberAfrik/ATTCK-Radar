@@ -9,6 +9,7 @@ export const TACTIC_FR = {
     'credential-access': 'Accès aux identifiants', discovery: 'Découverte', 'lateral-movement': 'Mouvement latéral',
     collection: 'Collecte', 'command-and-control': 'Commande et contrôle', exfiltration: 'Exfiltration', impact: 'Impact',
 };
+export const ORIGIN_FR = { sigmahq: 'SigmaHQ', splunk: 'Splunk Security Content', sentinel: 'Microsoft Sentinel', CyberAfrik: 'CyberAfrik' };
 export const LEVEL_FR = { critical: 'Critique', high: 'Élevée', medium: 'Moyenne', low: 'Faible', informational: 'Info' };
 
 function load() {

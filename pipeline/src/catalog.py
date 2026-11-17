@@ -14,10 +14,11 @@ FAMILIES = [
     ("identity_saas", "Identité et SaaS"),
     ("security_tools", "Outils de sécurité"),
     ("app", "Applications et middleware"),
+    ("vendor", "Produits tiers (connecteurs Microsoft Sentinel)"),
     ("other", "Autres sources"),
 ]
 
-# id, famille, libellé, description courte, exemples de produits
+# id, famille, libellé, description courte, exemples de produits, [secondaire : repliée par défaut]
 SOURCES = [
     ("edr", "endpoint_win", "EDR / XDR", "Télémétrie poste : processus, fichiers, registre, réseau",
      ["Microsoft Defender for Endpoint", "CrowdStrike Falcon", "Cortex XDR", "SentinelOne", "Elastic Defend"]),
@@ -51,7 +52,35 @@ SOURCES = [
     ("google_workspace", "identity_saas", "Google Workspace", "Journaux d'administration et de connexion", ["Google Workspace"]),
     ("github", "identity_saas", "GitHub", "Audit log de l'organisation", ["GitHub"]),
     ("antivirus", "security_tools", "Antivirus", "Détections de l'antivirus", ["Trend Micro", "Trellix", "ESET", "Kaspersky"]),
+    ("vpn", "network", "VPN / accès distant", "Journaux de la passerelle VPN : connexions, échecs, événements système",
+     ["FortiGate SSL-VPN", "Palo Alto GlobalProtect", "Pulse Secure", "Cisco AnyConnect"]),
+    ("network_devices", "network", "Équipements réseau (routeurs, commutateurs)",
+     "Commandes d'administration (AAA / TACACS), journaux système, événements BGP et LDP", ["Cisco IOS", "Juniper", "Huawei"]),
+    ("ids", "network", "IDS / IPS réseau", "Alertes et métadonnées d'une sonde de détection d'intrusion", ["Suricata", "Snort", "Cisco Firepower"]),
+    ("esxi", "cloud", "Hyperviseur VMware ESXi", "Syslog des hôtes ESXi : shell, comptes, arrêt de machines virtuelles", ["VMware ESXi", "vCenter"]),
+    ("azure_diag", "cloud", "Azure Diagnostics", "Journaux de ressources Azure : Key Vault, Azure Firewall, WAF, App Services",
+     ["Azure Key Vault", "Azure Firewall", "Azure WAF"]),
+    ("win_firewall", "endpoint_win", "Pare-feu Windows", "Canal Windows Firewall With Advanced Security : règles ajoutées, modifiées, supprimées", []),
+    ("win_other_channels", "endpoint_win", "Autres journaux Windows",
+     "Canaux applicatifs et services : AppLocker, Code Integrity, BITS, Task Scheduler, NTLM, WMI, PrintService, SMB, AppX, CAPI2, OpenSSH, Terminal Services",
+     [], True),
+    ("exchange", "app", "Exchange Server (sur site)", "Canal MSExchange Management : commandes d'administration de la messagerie", ["Microsoft Exchange"]),
+    ("app_logs", "app", "Journaux applicatifs", "Erreurs et exceptions des applications web et de leurs frameworks",
+     ["Java / JVM", "Spring", "Django", "Node.js", "Ruby on Rails", "Python"]),
+    ("database", "app", "Bases de données", "Journaux d'audit et d'erreurs du moteur de base de données", ["Oracle", "SQL Server", "PostgreSQL", "MySQL"]),
+    ("osquery", "endpoint_nix", "Osquery", "Résultats des requêtes osquery planifiées sur les postes et serveurs", ["osquery"], True),
+    ("cisco_duo", "identity_saas", "Cisco Duo (MFA)", "Journaux d'authentification et d'administration Duo", ["Cisco Duo"], True),
+    ("onelogin", "identity_saas", "OneLogin", "Événements du fournisseur d'identité OneLogin", ["OneLogin"], True),
+    ("bitbucket", "identity_saas", "Bitbucket", "Journal d'audit Bitbucket : dépôts, permissions, secrets", ["Bitbucket"], True),
+    ("honeypot", "security_tools", "Honeypot", "Événements d'un leurre réseau : toute interaction est suspecte", ["OpenCanary"], True),
+    ("rpc_firewall", "security_tools", "RPC Firewall", "Appels RPC filtrés et journalisés par RPC Firewall", ["RPC Firewall"], True),
+    ("cisco_nvm", "network", "Cisco Network Visibility Module", "Flux réseau par processus remontés par l'agent Cisco Secure Client", ["Cisco NVM"], True),
+    ("isovalent", "cloud", "Cisco Isovalent (Tetragon)", "Exécutions de processus et connexions observées dans les conteneurs via eBPF", ["Isovalent", "Tetragon"], True),
+    ("ai_llm", "app", "Plateformes IA / LLM", "Journaux d'invocation et d'administration de modèles de langage", ["AWS Bedrock", "Ollama", "Serveurs MCP"], True),
 ]
+
+WIN_DNS = {"dns-server", "dns-server-analytic"}
+APP_PRODUCTS = {"jvm", "spring", "django", "nodejs", "python", "ruby_on_rails", "sql", "velocity"}
 
 SYSMON_CATS = {
     "process_creation", "file_event", "file_change", "file_rename", "file_delete", "file_access",
@@ -109,6 +138,13 @@ def grants_for(product, service, category):
             return ["win_application"], None
         if s == "windefend":
             return ["win_defender"], None
+        if s == "firewall-as":
+            return ["win_firewall"], None
+        if s == "msexchange-management":
+            return ["exchange"], None
+        if s in WIN_DNS:
+            return ["dns"], None
+        return ["win_other_channels"], None
     if p == "linux":
         if s == "auditd":
             return ["auditd"], None
@@ -151,6 +187,26 @@ def grants_for(product, service, category):
             return ["webserver"], None
         if c == "antivirus":
             return ["antivirus"], None
+    if p == "opencanary":
+        return ["honeypot"], None
+    if p == "rpc_firewall":
+        return ["rpc_firewall"], None
+    if p == "bitbucket":
+        return ["bitbucket"], None
+    if p == "onelogin":
+        return ["onelogin"], None
+    if p == "cisco" and s == "duo":
+        return ["cisco_duo"], None
+    if p in ("cisco", "juniper", "huawei"):
+        return ["network_devices"], None
+    if p in ("fortigate", "fortios", "paloalto"):
+        return ["vpn"], None
+    if p in APP_PRODUCTS:
+        return ["app_logs"], None
+    if c == "database":
+        return ["database"], None
+    if p is None and s in ("apache", "nginx"):
+        return ["webserver"], None
     # Source automatique
     parts = [x for x in (p, s if s != p else None, c if (p is None or s is None) else None) if x]
     sid = "auto_" + "_".join(parts).replace("-", "_").replace(".", "_").replace(" ", "_").lower()
@@ -159,3 +215,81 @@ def grants_for(product, service, category):
     detail = s if (s and s != p) else c
     label = (base + (" · " + detail if detail else "")).strip(" ·") or "Source générique"
     return [sid], (sid, fam, label)
+
+
+# ---------------------------------------------------------------- Règles natives Splunk
+
+import re as _re
+
+SPLUNK_PREFIXES = [
+    ("Sysmon for Linux", ["edr_nix"]),
+    ("Sysmon", ["sysmon", "edr"]),
+    ("CrowdStrike ProcessRollup2", ["edr"]),
+    ("Windows Event Log Security 4688", ["win_4688"]),
+    ("Windows Event Log Security", ["win_security"]),
+    ("Windows Active Directory Admon", ["win_security"]),
+    ("Powershell Script Block Logging", ["win_powershell"]),
+    ("Windows Event Log System", ["win_system"]),
+    ("Windows Event Log Application", ["win_application"]),
+    ("Windows Event Log Defender", ["win_defender"]),
+    ("Windows Event Log", ["win_other_channels"]),
+    ("NTLM Operational", ["win_other_channels"]),
+    ("ASL AWS CloudTrail", ["aws_cloudtrail"]),
+    ("AWS CloudTrail", ["aws_cloudtrail"]),
+    ("Office 365", ["m365"]), ("O365", ["m365"]), ("M365", ["m365"]),
+    ("Azure Active Directory", ["entra_id"]),
+    ("Azure Audit", ["azure_activity"]), ("Azure Monitor Activity", ["azure_activity"]),
+    ("Okta", ["okta"]), ("Kubernetes Audit", ["k8s_audit"]), ("GitHub", ["github"]),
+    ("Google Workspace", ["google_workspace"]), ("G Suite", ["google_workspace"]),
+    ("Linux Auditd", ["auditd"]), ("Linux Secure", ["linux_syslog"]), ("Linux Messages Syslog", ["linux_syslog"]),
+    ("Nginx", ["webserver"]), ("Apache", ["webserver"]), ("Windows IIS", ["webserver"]),
+    ("Suricata", ["ids"]), ("Cisco Secure Firewall Threat Defense Intrusion", ["ids"]),
+    ("Zeek", ["zeek"]), ("Splunk Stream", ["zeek"]),
+    ("Palo Alto Network", ["firewall"]), ("Cisco ASA", ["firewall"]), ("Cisco Secure Firewall", ["firewall"]),
+    ("Cisco Secure Access Firewall", ["firewall"]), ("Cisco Secure Access Proxy", ["proxy"]), ("Cisco Secure Access DNS", ["dns"]),
+    ("VMWare ESXi", ["esxi"]), ("Cisco IOS", ["network_devices"]), ("Cisco SD-WAN", ["network_devices"]),
+    ("Cisco Duo", ["cisco_duo"]), ("Osquery", ["osquery"]),
+    ("Cisco Network Visibility Module", ["cisco_nvm"]), ("Cisco Isovalent", ["isovalent"]),
+    ("AWS Bedrock", ["ai_llm"]), ("Ollama", ["ai_llm"]), ("MCP Server", ["ai_llm"]),
+]
+
+
+def splunk_sources(data_sources):
+    out = []
+    for ds in data_sources or []:
+        for part in str(ds).split(" AND "):
+            part = part.strip()
+            for prefix, ids in SPLUNK_PREFIXES:
+                if part.startswith(prefix):
+                    out += [i for i in ids if i not in out]
+                    break
+    return out
+
+
+# ---------------------------------------------------------------- Règles natives Microsoft Sentinel
+
+SENTINEL_TABLES = {
+    "SecurityEvent": "win_security", "SecurityEvents": "win_security", "WindowsEvent": "win_security",
+    "AuditLogs": "entra_id", "SigninLogs": "entra_id", "AADNonInteractiveUserSignInLogs": "entra_id",
+    "AADServicePrincipalSignInLogs": "entra_id", "AADManagedIdentitySignInLogs": "entra_id",
+    "AWSCloudTrail": "aws_cloudtrail", "OfficeActivity": "m365", "AzureActivity": "azure_activity",
+    "AzureDiagnostics": "azure_diag", "KeyVaultData": "azure_diag", "AZFWApplicationRule": "azure_diag",
+    "AZFWIdpsSignature": "azure_diag", "AZFWNetworkRule": "azure_diag",
+    "DeviceProcessEvents": "edr", "DeviceNetworkEvents": "edr", "DeviceFileEvents": "edr", "DeviceEvents": "edr",
+    "DeviceImageLoadEvents": "edr", "DeviceRegistryEvents": "edr", "DeviceLogonEvents": "edr",
+    "DnsEvents": "dns", "Cisco_Umbrella_dns_CL": "dns", "W3CIISLog": "webserver",
+    "Cisco_Umbrella_proxy_CL": "proxy", "SquidProxy_CL": "proxy",
+    "GCPAuditLogs": "gcp_audit", "GWorkspaceActivityReports": "google_workspace",
+    "Okta_CL": "okta", "OktaSSO": "okta", "OktaV2_CL": "okta", "GitHubAuditLogPolling_CL": "github", "GitHubAuditLogsV2_CL": "github",
+}
+# Tables qui ne correspondent pas à une source de logs brute (alertes, renseignement, analyses)
+SENTINEL_SKIP = {"ThreatIntelligenceIndicator", "ThreatIntelIndicators", "SecurityAlert", "Anomalies", "BehaviorAnalytics",
+                 "SecurityIncident", "SecurityNestedRecommendation", "Heartbeat", "LAQueryLogs"}
+SENTINEL_SOLUTIONS = {"GitHub": "github", "ApacheHTTPServer": "webserver", "NGINX HTTP Server": "webserver", "OracleDatabaseAudit": "database",
+                      "CiscoDuoSecurity": "cisco_duo", "DNS Essentials": "dns", "Corelight": "zeek", "Okta Single Sign-On": "okta",
+                      "VMWareESXi": "esxi", "Windows Firewall": "win_firewall", "Microsoft Exchange Security - Exchange On-Premises": "exchange"}
+SENTINEL_VENDOR_MIN = 5
+
+
+def slug(text):
+    return _re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:60]

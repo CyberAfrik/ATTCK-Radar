@@ -101,6 +101,7 @@ class RadarImport extends Command
                         'id' => $s['id'], 'family_id' => $s['family'], 'label' => Str::limit($s['label'], 150, ''),
                         'description' => Str::limit($s['description'] ?? '', 390, ''),
                         'products' => json_encode($s['products'] ?? []), 'auto' => (bool) $s['auto'],
+                        'minor' => (bool) ($s['minor'] ?? $s['auto']),
                     ];
                 }, $chunk));
             }
@@ -116,6 +117,7 @@ class RadarImport extends Command
             $tacIds = array_flip(array_column($catalog['tactics'], 'id'));
             $gz = gzopen("$dir/rules.ndjson.gz", 'rb');
             $n = 0;
+            $seenUids = [];
             $rs = $rt = $rc = [];
             $flush = function () use (&$rs, &$rt, &$rc) {
                 foreach ([['rule_source', &$rs], ['rule_technique', &$rt], ['rule_tactic', &$rc]] as [$table, &$rows]) {
@@ -127,9 +129,10 @@ class RadarImport extends Command
             };
             while (($line = gzgets($gz)) !== false) {
                 $r = json_decode($line, true);
-                if (! is_array($r) || empty($r['uid']) || empty($r['title']) || ! isset($r['sigma'])) {
+                if (! is_array($r) || empty($r['uid']) || empty($r['title']) || ! isset($r['sigma']) || isset($seenUids[$r['uid']])) {
                     continue;
                 }
+                $seenUids[$r['uid']] = true;
                 $level = isset(self::LEVELS[$r['level'] ?? '']) ? $r['level'] : 'medium';
                 $techs = array_values(array_filter($r['techniques'] ?? [], fn ($t) => isset($techIds[$t])));
                 $id = DB::table('rules')->insertGetId([
@@ -144,6 +147,8 @@ class RadarImport extends Command
                     'falsepositives' => json_encode($r['falsepositives'] ?? []),
                     'technique_list' => Str::limit(implode(' ', $techs), 390, ''),
                     'sigma' => $r['sigma'], 'queries' => json_encode($r['queries'] ?? [], JSON_UNESCAPED_UNICODE),
+                    'langs' => ' '.implode(' ', array_merge($r['sigma'] !== '' ? ['sigma'] : [], array_keys(array_filter($r['queries'] ?? [])))).' ',
+                    'native' => isset($r['native']) ? Str::limit((string) $r['native'], 30, '') : null,
                 ]);
                 $prev = $before[$r['uid']] ?? null;
                 if ($hadBefore && (! $prev || $prev->modified !== ($r['modified'] ?? ''))) {

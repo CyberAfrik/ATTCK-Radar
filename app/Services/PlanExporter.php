@@ -9,6 +9,8 @@ class PlanExporter
 {
     private const LEVELS = ['critical' => 'Critique', 'high' => 'Élevée', 'medium' => 'Moyenne', 'low' => 'Faible', 'informational' => 'Information'];
 
+    private const ORIGINS = ['sigmahq' => 'SigmaHQ', 'splunk' => 'Splunk Security Content', 'sentinel' => 'Microsoft Sentinel'];
+
     private const STATES = ['on' => 'En place', 'planned' => 'Prévue', 'gap' => 'Angle mort', 'none' => 'Aucune règle connue'];
 
     public function __construct(private PlanService $plans, private CatalogIndex $index) {}
@@ -37,6 +39,7 @@ class PlanExporter
             ['Sources en place', count($data['on'])],
             ['Sources prévues', count($data['planned'])],
             ['Langage des requêtes', $langLabel],
+            ['Règles disponibles dans ce langage (feuille « Règles de détection »)', $this->plans->applicableRules(array_merge($data['on'], $data['planned']))->where('langs', 'like', '% '.$language.' %')->count()],
             ['Référentiel', 'MITRE ATT&CK '.($pack->attack_version ?? '').', version '.($pack->version ?? '')],
             ['Rouvrir ce plan', $planUrl],
             [],
@@ -47,7 +50,7 @@ class PlanExporter
         }
         $rows[] = [];
         $rows[] = ['Méthode : une règle est applicable si au moins une des sources qui fournissent sa télémétrie est en place. Une technique est détectable si au moins une règle applicable la vise. Ces chiffres mesurent la couverture par des règles publiques, pas l\'efficacité réelle de la détection.'];
-        $rows[] = ['Règles issues de SigmaHQ (Detection Rule License 1.1). Les requêtes converties supposent les schémas de champs standards de chaque produit et doivent être adaptées à votre ingestion.'];
+        $rows[] = ['Règles issues de SigmaHQ (Detection Rule License 1.1), de Splunk Security Content (Apache 2.0) et de Microsoft Sentinel (MIT). L\'origine et la licence de chaque règle figurent dans la dernière colonne. Les requêtes converties supposent les schémas de champs standards de chaque produit et doivent être adaptées à votre ingestion.'];
         $xlsx->addSheet('Synthèse', $rows, [46, 44, 16, 22, 16, 20]);
 
         $rows = [[['Famille', 1], ['Source', 1], ['État', 1], ['Ce qu\'elle apporte', 1], ['Produits types', 1], ['Règles', 1], ['Techniques', 1]]];
@@ -64,8 +67,8 @@ class PlanExporter
         foreach (DB::table('rule_source')->whereIn('source_id', $all ?: ['__none__'])->get() as $rs) {
             $ruleSources[$rs->rule_id][] = $rs->source_id;
         }
-        $this->plans->applicableRules($all)->orderByDesc('level_rank')->orderBy('title')
-            ->select(['id', 'title', 'level', 'technique_list', 'description', 'sigma', 'queries', 'falsepositives', 'upstream_url'])
+        $this->plans->applicableRules($all)->where('langs', 'like', '% '.$language.' %')->orderByDesc('level_rank')->orderBy('title')
+            ->select(['id', 'title', 'level', 'technique_list', 'description', 'sigma', 'queries', 'falsepositives', 'upstream_url', 'origin', 'license'])
             ->chunk(300, function ($chunk) use (&$rows, $language, $labels, $onSet, $ruleSources) {
                 foreach ($chunk as $r) {
                     $srcs = $ruleSources[$r->id] ?? [];
@@ -76,7 +79,8 @@ class PlanExporter
                         $now ? 'Aujourd\'hui' : 'Avec source prévue',
                         implode(' ou ', array_map(fn ($s) => $labels[$s] ?? $s, $srcs)),
                         $r->description, [$query ?? 'Non disponible dans ce langage. Voir la règle Sigma d\'origine.', 3],
-                        implode(' ; ', json_decode($r->falsepositives, true) ?: []), $r->upstream_url,
+                        implode(' ; ', json_decode($r->falsepositives, true) ?: []),
+                        (self::ORIGINS[$r->origin] ?? $r->origin).' ('.$r->license.') '.$r->upstream_url,
                     ];
                 }
             });
@@ -110,7 +114,7 @@ class PlanExporter
 
         return ['xlsx' => $base.'.xlsx', 'layer' => $base.'.json', 'summary' => [
             'pct_on' => $pct($t['on']), 'pct_planned' => $pct($t['on'] + $t['planned']),
-            'rules' => $t['rules_on'], 'gaps' => count(array_filter($data['gaps'], fn ($g) => $g['state'] !== 'planned')),
+            'rules' => $this->plans->applicableRules($data['on'])->where('langs', 'like', '% '.$language.' %')->count(), 'gaps' => count(array_filter($data['gaps'], fn ($g) => $g['state'] !== 'planned')),
             'language' => $langLabel,
         ]];
     }
