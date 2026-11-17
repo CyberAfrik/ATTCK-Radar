@@ -51,9 +51,9 @@ class CatalogIndex
             DB::table('sources')->where('id', $sid)->update(['techniques_count' => count($list)]);
         }
 
-        $sources = DB::table('sources')->orderBy('auto')->orderByDesc('rules_count')->get()->map(fn ($s) => [
+        $sources = DB::table('sources')->orderBy('minor')->orderByDesc('rules_count')->get()->map(fn ($s) => [
             'id' => $s->id, 'family' => $s->family_id, 'label' => $s->label, 'description' => $s->description,
-            'products' => json_decode($s->products, true) ?: [], 'auto' => (bool) $s->auto,
+            'products' => json_decode($s->products, true) ?: [], 'auto' => (bool) $s->auto || (bool) $s->minor,
             'rules' => (int) $s->rules_count, 'techniques' => count($sourceTechs[$s->id] ?? []),
         ])->all();
 
@@ -61,6 +61,7 @@ class CatalogIndex
             'pack' => $pack ? [
                 'version' => $pack->version, 'attack' => $pack->attack_version,
                 'generated_at' => $pack->generated_at, 'rules' => DB::table('rules')->count(),
+                'origins' => DB::table('rules')->selectRaw('origin, count(*) as c')->groupBy('origin')->pluck('c', 'origin'),
             ] : null,
             'languages' => $languages ?: $this->defaultLanguages(),
             'families' => DB::table('source_families')->orderBy('position')->get(['id', 'label'])->all(),

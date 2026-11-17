@@ -21,7 +21,7 @@ class Overlays
     {
         foreach (DB::table('source_overrides')->get() as $o) {
             DB::table('sources')->where('id', $o->source_id)->update([
-                'label' => $o->label, 'family_id' => $o->family_id, 'description' => $o->description, 'auto' => false,
+                'label' => $o->label, 'family_id' => $o->family_id, 'description' => $o->description, 'auto' => false, 'minor' => (bool) $o->minor,
             ]);
         }
 
@@ -75,7 +75,7 @@ class Overlays
                 'modified' => substr((string) $r->updated_at, 0, 10), 'kind' => 'admin', 'upstream_url' => '',
                 'license' => 'CyberAfrik', 'cves' => '[]', 'refs' => '[]',
                 'falsepositives' => json_encode($r->falsepositives !== '' ? [$r->falsepositives] : []),
-                'technique_list' => Str::limit(implode(' ', $ruleTechs), 390, ''), 'sigma' => $r->sigma, 'queries' => '{}',
+                'technique_list' => Str::limit(implode(' ', $ruleTechs), 390, ''), 'sigma' => $r->sigma, 'queries' => '{}', 'langs' => ' sigma ',
             ]);
             DB::table('rule_source')->insert(array_map(fn ($s) => ['rule_id' => $id, 'source_id' => $s], $ruleSources));
             if ($ruleTechs) {

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { store, api, LEVEL_FR } from '../store';
+import { store, api, LEVEL_FR, ORIGIN_FR } from '../store';
 
 const props = defineProps({ ruleId: { type: Number, default: null } });
 const emit = defineEmits(['close']);
@@ -17,8 +17,17 @@ watch(() => props.ruleId, async (id) => {
 watch(() => store.language, (l) => { lang.value = l; });
 
 const langs = computed(() => store.catalog.languages);
-const query = computed(() => (rule.value ? rule.value.queries[lang.value] : null));
-const note = computed(() => (langs.value.find((l) => l.id === lang.value) || {}).note);
+// Si la règle n'existe pas dans le langage choisi, on montre sa version native (ou la première disponible)
+const shown = computed(() => {
+    if (!rule.value) return null;
+    if (rule.value.queries[lang.value]) return lang.value;
+    if (rule.value.native && rule.value.queries[rule.value.native]) return rule.value.native;
+    return Object.keys(rule.value.queries).find((k) => rule.value.queries[k]) || null;
+});
+const query = computed(() => (rule.value && shown.value ? rule.value.queries[shown.value] : null));
+const labelOf = (id) => (langs.value.find((l) => l.id === id) || {}).label || id;
+const fallback = computed(() => (shown.value && shown.value !== lang.value ? `Cette règle n'existe pas en ${labelOf(lang.value)}. Voici sa version ${labelOf(shown.value)}.` : ''));
+const note = computed(() => (langs.value.find((l) => l.id === shown.value) || {}).note);
 const techs = computed(() => (rule.value ? rule.value.techniques.map((id) => ({ id, name: (store.catalog.techniques[id] || {}).n || '' })) : []));
 const sources = computed(() => (rule.value ? rule.value.sources.map((id) => store.catalog.sourceById[id]).filter(Boolean) : []));
 const safeRefs = computed(() => (rule.value ? (rule.value.references || []).filter((u) => /^https?:\/\//i.test(u)).slice(0, 5) : []));
@@ -56,15 +65,16 @@ function pick(id) { lang.value = id; store.language = id; }
                 </dl>
             </div>
             <div class="tabs" role="tablist" aria-label="Langage de la requête">
-                <button v-for="l in langs" :key="l.id" type="button" role="tab" class="tab" :class="{ active: l.id === lang, missing: !rule.queries[l.id] }"
-                    :aria-selected="l.id === lang" @click="pick(l.id)">{{ l.label }}</button>
+                <button v-for="l in langs" :key="l.id" type="button" role="tab" class="tab" :class="{ active: l.id === shown, missing: !rule.queries[l.id] }"
+                    :aria-selected="l.id === shown" @click="pick(l.id)">{{ l.label }}</button>
                 <button type="button" class="btn btn-ghost btn-sm copy" :disabled="!query" @click="copy">{{ copied ? 'Copié' : 'Copier' }}</button>
             </div>
+            <p v-if="fallback" class="fallback" role="status">{{ fallback }}</p>
             <pre v-if="query" class="code" tabindex="0">{{ query }}</pre>
-            <div v-else class="code empty">Cette règle n'a pas pu être convertie dans ce langage. Utilisez la version Sigma comme base.</div>
+            <div v-else class="code empty">Aucune requête disponible pour cette règle.</div>
             <div class="pad small muted rule-foot">
                 <p v-if="note">{{ note }}</p>
-                <p>Règle {{ rule.origin === 'sigmahq' ? 'SigmaHQ' : rule.origin }}<template v-if="rule.author"> par {{ rule.author }}</template>, licence {{ rule.license }}.
+                <p>Règle {{ ORIGIN_FR[rule.origin] || rule.origin }}<template v-if="rule.author"> par {{ rule.author }}</template>, licence {{ rule.license }}.
                     <a v-if="/^https:\/\/github\.com\//.test(rule.upstream_url)" :href="rule.upstream_url" target="_blank" rel="noopener noreferrer">Voir la règle d'origine</a></p>
                 <p v-if="safeRefs.length">Références :
                     <template v-for="(u, i) in safeRefs" :key="u"><a :href="u" target="_blank" rel="noopener noreferrer nofollow">[{{ i + 1 }}]</a>{{ ' ' }}</template>

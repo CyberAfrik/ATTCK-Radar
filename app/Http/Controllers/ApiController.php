@@ -35,6 +35,8 @@ class ApiController extends Controller
             'tactic' => ['nullable', 'regex:/^TA\d{4}$/'],
             'technique' => ['nullable', 'regex:/^T\d{4}(\.\d{3})?$/'],
             'source' => ['nullable', 'string', 'max:80'],
+            'origin' => ['nullable', 'string', 'max:30'],
+            'lang' => ['nullable', 'regex:/^[a-z_]{2,30}$/'],
             'page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ]);
 
@@ -56,6 +58,13 @@ class ApiController extends Controller
             $base->whereIn('rules.id', fn ($q) => $q->select('rule_id')->from('rule_source')->where('source_id', $v['source']));
         }
 
+        if (! empty($v['lang'])) {
+            $base->where('langs', 'like', '% '.$v['lang'].' %');
+        }
+        $origins = (clone $base)->selectRaw('origin, count(*) as c')->groupBy('origin')->pluck('c', 'origin');
+        if (! empty($v['origin'])) {
+            $base->where('origin', $v['origin']);
+        }
         $levels = (clone $base)->selectRaw('level, count(*) as c')->groupBy('level')->pluck('c', 'level');
         if (! empty($v['level'])) {
             $base->where('level', $v['level']);
@@ -63,13 +72,13 @@ class ApiController extends Controller
         $total = (clone $base)->count();
         $page = (int) ($v['page'] ?? 1);
         $items = $base->orderByDesc('level_rank')->orderBy('title')->forPage($page, 25)
-            ->get(['id', 'title', 'level', 'technique_list', 'modified']);
+            ->get(['id', 'title', 'level', 'technique_list', 'modified', 'origin']);
         $srcs = DB::table('rule_source')->whereIn('rule_id', $items->pluck('id'))->get()->groupBy('rule_id');
 
         return [
-            'total' => $total, 'page' => $page, 'pages' => (int) ceil($total / 25), 'levels' => $levels,
+            'total' => $total, 'page' => $page, 'pages' => (int) ceil($total / 25), 'levels' => $levels, 'origins' => $origins,
             'items' => $items->map(fn ($r) => [
-                'id' => $r->id, 'title' => $r->title, 'level' => $r->level, 'modified' => $r->modified,
+                'id' => $r->id, 'title' => $r->title, 'level' => $r->level, 'modified' => $r->modified, 'origin' => $r->origin,
                 'techniques' => $r->technique_list === '' ? [] : explode(' ', $r->technique_list),
                 'sources' => ($srcs[$r->id] ?? collect())->pluck('source_id')->all(),
             ]),
@@ -89,8 +98,8 @@ class ApiController extends Controller
             'sources' => DB::table('rule_source')->where('rule_id', $r->id)->pluck('source_id'),
             'cves' => json_decode($r->cves, true), 'references' => json_decode($r->refs, true),
             'falsepositives' => json_decode($r->falsepositives, true),
-            'upstream_url' => $r->upstream_url, 'license' => $r->license, 'origin' => $r->origin,
-            'queries' => ['sigma' => $r->sigma] + (json_decode($r->queries, true) ?: []),
+            'upstream_url' => $r->upstream_url, 'license' => $r->license, 'origin' => $r->origin, 'native' => $r->native,
+            'queries' => ($r->sigma !== '' ? ['sigma' => $r->sigma] : []) + (json_decode($r->queries, true) ?: []),
         ];
     }
 

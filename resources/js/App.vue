@@ -45,7 +45,7 @@ onMounted(() => loadCatalog().catch(() => {}));
 
     <footer class="footer">
         <div class="wrap footer-in">
-            <span>ATT&amp;CK Radar est un projet communautaire de <a href="https://cyber-afrik.com" rel="noopener">CyberAfrik SARL</a>. Taxonomie : MITRE ATT&amp;CK® Enterprise{{ store.catalog && store.catalog.pack ? "\u00a0" + store.catalog.pack.attack : "" }}. Règles : SigmaHQ, licence DRL 1.1.</span>
+            <span>ATT&amp;CK Radar est un projet communautaire de <a href="https://cyber-afrik.com" rel="noopener">CyberAfrik SARL</a>. Taxonomie : MITRE ATT&amp;CK® Enterprise{{ store.catalog && store.catalog.pack ? "\u00a0" + store.catalog.pack.attack : "" }}. Règles : <a href="https://github.com/SigmaHQ/sigma" rel="noopener">SigmaHQ</a> (DRL 1.1), <a href="https://github.com/splunk/security_content" rel="noopener">Splunk Security Content</a> (Apache 2.0), <a href="https://github.com/Azure/Azure-Sentinel" rel="noopener">Microsoft Sentinel</a> (MIT).</span>
             <span v-if="store.catalog && store.catalog.pack" class="mono"><RouterLink to="/nouveautes">Nouveautés</RouterLink> · Référentiel {{ store.catalog.pack.version }} · {{ store.catalog.pack.rules }} règles</span>
         </div>
     </footer>
